@@ -31,6 +31,7 @@ body { margin: 0; padding-top: env(safe-area-inset-top, 0px); }
   --bad-soft: #f8e3e0;
   --sold: #2f5fa8;
   --sold-soft: #e2eaf7;
+  --wa: #1a8f4e;
   --font-display: "Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
   --font-body: "Figtree", -apple-system, "Segoe UI", system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
@@ -112,6 +113,12 @@ details[open] summary { margin-bottom: 10px; }
 #chips-acq { align-items: center; }
 #chips-acq .etichetta { flex: 0 0 auto; font-size: 0.8rem; color: var(--muted); font-weight: 600; padding-right: 2px; }
 #chips-acq .chip[aria-pressed="true"] { background: var(--sold); border-color: var(--sold); color: var(--surface); }
+.wa { display: grid; gap: 10px; }
+.wa-riga { display: flex; gap: 8px; flex-wrap: wrap; align-items: end; }
+.wa-riga label.field { flex: 1 1 200px; }
+.wa-btn { flex: 1 1 220px; display: inline-flex; justify-content: center; align-items: center; gap: 8px; text-decoration: none; border-radius: 10px; padding: 11px 14px; font-weight: 600; background: var(--wa); color: #fff; border: 1px solid var(--wa); }
+.wa-btn svg { width: 20px; height: 20px; }
+.wa-btn[aria-disabled="true"] { background: var(--line); border-color: var(--line); color: var(--muted); pointer-events: none; }
 .chip .conta { opacity: 0.7; font-weight: 500; margin-left: 4px; font-variant-numeric: tabular-nums; }
 .totals { display: flex; gap: 14px; flex-wrap: wrap; font-size: 0.85rem; color: var(--muted); }
 .totals b { color: var(--ink); font-variant-numeric: tabular-nums; }
@@ -173,7 +180,7 @@ nav.tabbar svg { width: 22px; height: 22px; }
   <section id="vista-calc" class="wrap" aria-labelledby="t-calc">
     <header>
       <h1 id="t-calc">Calcolatore gift card</h1>
-      <p class="sub">Card da 40 € · 524 punti l'una · <span class="versione">versione 5</span></p>
+      <p class="sub">Card da 40 € · 524 punti l'una · <span class="versione">versione 6</span></p>
     </header>
 
     <div class="panel">
@@ -248,6 +255,18 @@ nav.tabbar svg { width: 22px; height: 22px; }
       <button class="chip" data-f="Usata" aria-pressed="false" type="button">Usate</button>
     </div>
     <div class="chips" id="chips-acq" role="group" aria-label="Filtra per acquirente" hidden></div>
+    <div class="panel wa" id="wa" hidden>
+      <div class="wa-riga">
+        <label class="field" for="wa-numero"><span id="wa-etichetta">Numero WhatsApp</span>
+          <input id="wa-numero" type="tel" inputmode="tel" autocomplete="off" placeholder="es. +39 333 123 4567">
+        </label>
+        <a class="wa-btn" id="wa-invia" target="_blank" rel="noopener" aria-disabled="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 11.6a8.5 8.5 0 0 1-12.6 7.4L3.5 20.5l1.6-4.2a8.5 8.5 0 1 1 15.4-4.7z"/><path d="M8.8 8.5c.3 2.6 2.1 4.9 4.6 5.9l1.3-1.2 2 .9-.3 1.7c-3.9.2-7.7-3.6-7.6-7.6l1.7-.3.9 2z"/></svg>
+          <span id="wa-testo">Invia codici su WhatsApp</span>
+        </a>
+      </div>
+      <p class="note" id="wa-nota"></p>
+    </div>
     <p class="status" id="stato-salvataggio" aria-live="polite"></p>
     <div class="cards" id="lista">
       <div class="empty">Caricamento dell'inventario…</div>
@@ -288,6 +307,7 @@ nav.tabbar svg { width: 22px; height: 22px; }
   let card = [];          // [{id, taglio, codice, stato, acquirente, creato}]
   let filtro = "Tutte";
   let filtroAcq = null;  // acquirente scelto (in minuscolo), null = tutti
+  let numeri = {};       // numero WhatsApp per acquirente (chiave in minuscolo)
   const chiaveAcq = (s) => String(s || "").trim().toLowerCase();
   const visibile = (c) => (filtro === "Tutte" || c.stato === filtro) && (filtroAcq === null || chiaveAcq(c.acquirente) === filtroAcq);
   let db = null, colCard = null;
@@ -372,7 +392,8 @@ nav.tabbar svg { width: 22px; height: 22px; }
     if (ix("codice") < 0) throw new Error("colonna codice mancante");
     return righe.slice(1).map(split).map((v) => ({
       taglio: ix("taglio") >= 0 ? v[ix("taglio")] : "", codice: v[ix("codice")] || "",
-      stato: ix("stato") >= 0 ? v[ix("stato")] : "", acquirente: ix("acquirente") >= 0 ? v[ix("acquirente")] || "" : "" }));
+      stato: ix("stato") >= 0 ? v[ix("stato")] : "", acquirente: ix("acquirente") >= 0 ? v[ix("acquirente")] || "" : "",
+      telefono: ix("telefono") >= 0 ? v[ix("telefono")] || "" : "" }));
   }
   $("file-import").addEventListener("change", async (e) => {
     const f = e.target.files && e.target.files[0];
@@ -386,6 +407,7 @@ nav.tabbar svg { width: 22px; height: 22px; }
       const codice = r.codice.trim();
       if (!codice) continue;
       const dati = { taglio: normTaglio(r.taglio), stato: normStato(r.stato), acquirente: r.acquirente.trim() };
+      if (r.telefono.trim() && chiaveAcq(dati.acquirente)) numeri[chiaveAcq(dati.acquirente)] = r.telefono.trim();
       const esist = card.find((c) => c.codice === codice);
       if (esist) {
         if (esist.taglio !== dati.taglio || esist.stato !== dati.stato || (esist.acquirente || "") !== dati.acquirente) {
@@ -401,8 +423,8 @@ nav.tabbar svg { width: 22px; height: 22px; }
   });
   $("btn-esporta").onclick = async () => {
     const q = (s) => /[;"\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
-    const righe = ["taglio;codice;stato;acquirente"].concat(card.filter((c) => c.codice || c.acquirente)
-      .map((c) => [c.taglio, c.codice || "", c.stato, c.acquirente || ""].map((x) => q(String(x))).join(";")));
+    const righe = ["taglio;codice;stato;acquirente;telefono"].concat(card.filter((c) => c.codice || c.acquirente)
+      .map((c) => [c.taglio, c.codice || "", c.stato, c.acquirente || "", numeri[chiaveAcq(c.acquirente)] || ""].map((x) => q(String(x))).join(";")));
     const testo = "﻿" + righe.join("\r\n") + "\r\n";
     const dl = await (window.claude && window.claude.use ? window.claude.use("downloads") : null);
     if (!dl) {
@@ -425,9 +447,9 @@ nav.tabbar svg { width: 22px; height: 22px; }
 
   /* ---------- archivio ---------- */
   const LS_KEY = "gc-inventario";
-  function salvaLocale() { try { localStorage.setItem(LS_KEY, JSON.stringify({ imp, card })); } catch (e) {} }
+  function salvaLocale() { try { localStorage.setItem(LS_KEY, JSON.stringify({ imp, card, numeri })); } catch (e) {} }
   function caricaLocale() {
-    try { const d = JSON.parse(localStorage.getItem(LS_KEY) || "null"); if (d) { imp = d.imp || imp; card = d.card || []; } } catch (e) {}
+    try { const d = JSON.parse(localStorage.getItem(LS_KEY) || "null"); if (d) { imp = d.imp || imp; card = d.card || []; numeri = d.numeri || {}; } } catch (e) {}
   }
   function avviso(t) { $("stato-salvataggio").textContent = t; }
 
@@ -483,6 +505,7 @@ nav.tabbar svg { width: 22px; height: 22px; }
     if (subito) scriviCard(c);
     else debounce.set(c.id, setTimeout(() => scriviCard(c), 600));
     totali();
+    aggiornaWa();
   }
 
   function rigaCard(c) {
@@ -568,6 +591,51 @@ nav.tabbar svg { width: 22px; height: 22px; }
     if (el) el.focus();
   }
 
+  /* ---------- invio codici su WhatsApp ---------- */
+  function numeroWa(testo) {
+    let n = String(testo || "").trim();
+    const piu = n.startsWith("+");
+    n = n.replace(/\D/g, "");
+    if (!piu && n.startsWith("00")) n = n.slice(2);
+    else if (!piu && /^3\d{8,9}$/.test(n)) n = "39" + n;  // cellulare italiano senza prefisso
+    return n.length >= 8 ? n : "";
+  }
+  function aggiornaWa() {
+    const box = $("wa");
+    if (filtroAcq === null) { box.hidden = true; return; }
+    box.hidden = false;
+    const proprie = card.filter((c) => chiaveAcq(c.acquirente) === filtroAcq);
+    const nome = proprie.length ? proprie[0].acquirente.trim() : "";
+    const vendute = proprie.filter((c) => c.stato === "Venduta" && (c.codice || "").trim());
+    $("wa-etichetta").textContent = `Numero WhatsApp di ${nome}`;
+    const inp = $("wa-numero");
+    if (document.activeElement !== inp) inp.value = numeri[filtroAcq] || "";
+    const num = numeroWa(inp.value);
+    const btn = $("wa-invia");
+    $("wa-testo").textContent = vendute.length === 1 ? "Invia 1 codice su WhatsApp" : `Invia ${vendute.length} codici su WhatsApp`;
+    let nota = "";
+    if (!vendute.length) nota = `${nome} non ha card segnate «Venduta» con un codice.`;
+    else if (!num) nota = "Scrivi il numero per attivare l'invio. Si apre WhatsApp con il messaggio pronto: tocca Invia.";
+    else nota = "Si apre WhatsApp con il messaggio pronto: controlla e tocca Invia.";
+    $("wa-nota").textContent = nota;
+    if (vendute.length && num) {
+      const righe = vendute.map((c, i) => `${i + 1}. ${c.codice.trim()} (${(TAGLI[c.taglio] || TAGLI[T40]).valore} €)`);
+      const msg = `Ciao ${nome}, ecco ${vendute.length === 1 ? "la tua gift card" : "le tue gift card"} Bambu Lab:\n\n${righe.join("\n")}`;
+      btn.href = `https://wa.me/${num}?text=${encodeURIComponent(msg)}`;
+      btn.setAttribute("aria-disabled", "false");
+    } else {
+      btn.removeAttribute("href");
+      btn.setAttribute("aria-disabled", "true");
+    }
+  }
+  $("wa-numero").addEventListener("input", () => {
+    if (filtroAcq === null) return;
+    const v = $("wa-numero").value.trim();
+    if (v) numeri[filtroAcq] = v; else delete numeri[filtroAcq];
+    salvaLocale();
+    aggiornaWa();
+  });
+
   function renderAcquirenti() {
     const box = $("chips-acq");
     const acq = new Map();
@@ -579,6 +647,7 @@ nav.tabbar svg { width: 22px; height: 22px; }
     }
     if (filtroAcq !== null && !acq.has(filtroAcq)) filtroAcq = null;
     box.hidden = acq.size === 0;
+    aggiornaWa();
     box.innerHTML = "";
     if (!acq.size) return;
     const et = document.createElement("span"); et.className = "etichetta"; et.textContent = "Acquirenti:"; box.append(et);
