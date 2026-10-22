@@ -180,7 +180,7 @@ nav.tabbar svg { width: 22px; height: 22px; }
   <section id="vista-calc" class="wrap" aria-labelledby="t-calc">
     <header>
       <h1 id="t-calc">Calcolatore gift card</h1>
-      <p class="sub">Card da 40 € · 524 punti l'una · <span class="versione">versione 6</span></p>
+      <p class="sub">Card da 40 € · 524 punti l'una · <span class="versione">versione 7</span></p>
     </header>
 
     <div class="panel">
@@ -265,7 +265,10 @@ nav.tabbar svg { width: 22px; height: 22px; }
           <span id="wa-testo">Invia codici su WhatsApp</span>
         </a>
       </div>
-      <p class="note" id="wa-nota"></p>
+      <div class="row" style="align-items:center">
+        <p class="note" id="wa-nota" style="flex:1 1 220px"></p>
+        <button id="wa-annulla" type="button" style="flex:0 0 auto" hidden>Interrompi invio</button>
+      </div>
     </div>
     <p class="status" id="stato-salvataggio" aria-live="polite"></p>
     <div class="cards" id="lista">
@@ -600,34 +603,78 @@ nav.tabbar svg { width: 22px; height: 22px; }
     else if (!piu && /^3\d{8,9}$/.test(n)) n = "39" + n;  // cellulare italiano senza prefisso
     return n.length >= 8 ? n : "";
   }
+  // Invio guidato: WhatsApp accetta un solo messaggio per link, quindi si manda un messaggio alla volta
+  // (saluto, poi un codice per messaggio). La coda resta salvata se iOS ricarica l'app al ritorno.
+  const INVIO_KEY = "gc-invio";
+  let invio = null;  // {acq, numero, messaggi: [...], idx}
+  try { invio = JSON.parse(localStorage.getItem(INVIO_KEY) || "null"); } catch (e) {}
+  function salvaInvio() { try { if (invio) localStorage.setItem(INVIO_KEY, JSON.stringify(invio)); else localStorage.removeItem(INVIO_KEY); } catch (e) {} }
+  const linkWa = (num, testo) => `https://wa.me/${num}?text=${encodeURIComponent(testo)}`;
+
   function aggiornaWa() {
     const box = $("wa");
     if (filtroAcq === null) { box.hidden = true; return; }
     box.hidden = false;
     const proprie = card.filter((c) => chiaveAcq(c.acquirente) === filtroAcq);
     const nome = proprie.length ? proprie[0].acquirente.trim() : "";
-    const vendute = proprie.filter((c) => c.stato === "Venduta" && (c.codice || "").trim());
+    const daInviare = proprie.filter((c) => c.stato === "Disponibile" && (c.codice || "").trim());
     $("wa-etichetta").textContent = `Numero WhatsApp di ${nome}`;
     const inp = $("wa-numero");
     if (document.activeElement !== inp) inp.value = numeri[filtroAcq] || "";
     const num = numeroWa(inp.value);
     const btn = $("wa-invia");
-    $("wa-testo").textContent = vendute.length === 1 ? "Invia 1 codice su WhatsApp" : `Invia ${vendute.length} codici su WhatsApp`;
-    let nota = "";
-    if (!vendute.length) nota = `${nome} non ha card segnate «Venduta» con un codice.`;
-    else if (!num) nota = "Scrivi il numero per attivare l'invio. Si apre WhatsApp con il messaggio pronto: tocca Invia.";
-    else nota = "Si apre WhatsApp con il messaggio pronto: controlla e tocca Invia.";
-    $("wa-nota").textContent = nota;
-    if (vendute.length && num) {
-      const righe = vendute.map((c, i) => `${i + 1}. ${c.codice.trim()} (${(TAGLI[c.taglio] || TAGLI[T40]).valore} €)`);
-      const msg = `Ciao ${nome}, ecco ${vendute.length === 1 ? "la tua gift card" : "le tue gift card"} Bambu Lab:\n\n${righe.join("\n")}`;
-      btn.href = `https://wa.me/${num}?text=${encodeURIComponent(msg)}`;
+    $("wa-annulla").hidden = true;
+
+    if (invio && invio.acq === filtroAcq) {
+      const tot = invio.messaggi.length, i = invio.idx;
+      $("wa-testo").textContent = `Invia codice ${i} di ${tot - 1}`;
+      $("wa-nota").textContent = `Messaggio ${i + 1} di ${tot}. Dopo ogni invio torna qui e tocca di nuovo il pulsante.`;
+      btn.href = linkWa(invio.numero, invio.messaggi[i]);
       btn.setAttribute("aria-disabled", "false");
+      $("wa-annulla").hidden = false;
+      return;
+    }
+
+    const n = daInviare.length;
+    $("wa-testo").textContent = n === 1 ? "Invia 1 codice su WhatsApp" : `Invia ${n} codici su WhatsApp`;
+    let nota;
+    if (!n) nota = `${nome} non ha card «Disponibile» con un codice da inviare.`;
+    else if (!num) nota = "Scrivi il numero per attivare l'invio.";
+    else nota = `Invierai ${n + 1} messaggi: il saluto e poi un codice per messaggio. Le card passano a «Venduta».`;
+    $("wa-nota").textContent = nota;
+    if (n && num) {
+      const totale = daInviare.reduce((t, c) => t + (TAGLI[c.taglio] || TAGLI[T40]).valore, 0);
+      btn.href = linkWa(num, `Ciao ${nome}, ecco le tue gift card Bambu Lab per un totale di ${totale}€:`);
+      btn.setAttribute("aria-disabled", "false");
+      btn.dataset.ids = daInviare.map((c) => c.id).join(",");
     } else {
       btn.removeAttribute("href");
       btn.setAttribute("aria-disabled", "true");
     }
   }
+
+  $("wa-invia").addEventListener("click", () => {
+    if ($("wa-invia").getAttribute("aria-disabled") === "true") return;
+    // il link si apre con l'indirizzo attuale; la coda avanza subito dopo
+    setTimeout(() => {
+      if (invio && invio.acq === filtroAcq) {
+        invio.idx++;
+        if (invio.idx >= invio.messaggi.length) { invio = null; avviso("Tutti i codici sono stati inviati."); }
+      } else {
+        const ids = ($("wa-invia").dataset.ids || "").split(",").filter(Boolean);
+        const scelte = ids.map((id) => card.find((c) => c.id === id)).filter(Boolean);
+        if (!scelte.length) return;
+        const intro = $("wa-invia").getAttribute("href");
+        const testoIntro = decodeURIComponent(intro.split("?text=")[1] || "");
+        invio = { acq: filtroAcq, numero: numeroWa($("wa-numero").value), messaggi: [testoIntro, ...scelte.map((c) => c.codice.trim())], idx: 1 };
+        for (const c of scelte) modifica(c, "stato", "Venduta", true);
+        render();
+      }
+      salvaInvio();
+      aggiornaWa();
+    }, 0);
+  });
+  $("wa-annulla").onclick = () => { invio = null; salvaInvio(); aggiornaWa(); avviso("Invio interrotto. Le card restano segnate come vendute."); };
   $("wa-numero").addEventListener("input", () => {
     if (filtroAcq === null) return;
     const v = $("wa-numero").value.trim();
