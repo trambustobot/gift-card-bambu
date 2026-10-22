@@ -93,15 +93,12 @@ button.danger { color: var(--bad); }
 .fact span { font-size: 0.75rem; color: var(--muted); }
 
 .prices { display: grid; gap: 6px; }
-.price-head, .price { display: grid; grid-template-columns: 3.4rem 1fr 1fr auto; gap: 6px; white-space: nowrap; align-items: center; font-variant-numeric: tabular-nums; }
+.price-head, .price { display: grid; grid-template-columns: 3.4rem 1fr 1fr; gap: 6px; white-space: nowrap; align-items: center; font-variant-numeric: tabular-nums; }
 .price-head { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; padding: 0 10px; }
 .price { background: var(--bg); border-radius: 10px; padding: 9px 10px; }
 .price .p { font-family: var(--font-display); font-weight: 700; font-size: 1.1rem; }
 .price .disc { display: block; font-size: 0.72rem; color: var(--muted); font-weight: 500; font-family: var(--font-body); }
 .price > span { min-width: 0; font-size: 0.95rem; }
-.pill { font-size: 0.78rem; font-weight: 600; border-radius: 999px; padding: 3px 9px; white-space: nowrap; }
-.pill.si { background: var(--good-soft); color: var(--good); }
-.pill.no { background: var(--bad-soft); color: var(--bad); }
 .gain-pos { color: var(--good); font-weight: 600; }
 .gain-neg { color: var(--bad); font-weight: 600; }
 .note { font-size: 0.82rem; color: var(--muted); margin: 0; }
@@ -172,7 +169,7 @@ nav.tabbar svg { width: 22px; height: 22px; }
   <section id="vista-calc" class="wrap" aria-labelledby="t-calc">
     <header>
       <h1 id="t-calc">Calcolatore gift card</h1>
-      <p class="sub">Card da 40 € · 524 punti l'una</p>
+      <p class="sub">Card da 40 € · 524 punti l'una · <span class="versione">versione 3</span></p>
     </header>
 
     <div class="panel">
@@ -196,7 +193,7 @@ nav.tabbar svg { width: 22px; height: 22px; }
         <p class="note" id="nota-soldi">Convertendo gli stessi punti in soldi avresti 29,74 €.</p>
       </div>
       <div class="prices" id="prezzi">
-        <div class="price-head"><span>Card a</span><span>Incassi</span><span>Guadagno</span><span></span></div>
+        <div class="price-head"><span>Card a</span><span>Incassi</span><span>Guadagno</span></div>
       </div>
       <p class="note">«Guadagno» è quanto ci guadagni in più vendendo le card invece di convertire i punti in soldi.</p>
     </div>
@@ -322,10 +319,10 @@ nav.tabbar svg { width: 22px; height: 22px; }
     const box = $("prezzi");
     box.querySelectorAll(".price").forEach((el) => el.remove());
     for (const p of PREZZI) {
-      const incasso = c.n * p, guadagno = incasso - soldi, si = incasso > soldi;
+      const incasso = c.n * p, guadagno = incasso - soldi;
       const r = document.createElement("div");
       r.className = "price";
-      r.innerHTML = `<span class="p"></span><span class="inc"></span><span></span><span class="pill ${si ? "si" : "no"}">${si ? "Conviene" : "No"}</span>`;
+      r.innerHTML = `<span class="p"></span><span class="inc"></span><span></span>`;
       r.children[0].textContent = p + " €";
       const d = document.createElement("span"); d.className = "disc"; d.textContent = `−${Math.round((1 - p / 40) * 1000) / 10}%`;
       r.children[0].append(d);
