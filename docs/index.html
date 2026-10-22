@@ -109,6 +109,10 @@ details[open] summary { margin-bottom: 10px; }
 .chips { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; }
 .chip { flex: 0 0 auto; border-radius: 999px; padding: 6px 12px; font-size: 0.85rem; font-weight: 600; background: var(--surface); }
 .chip[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+#chips-acq { align-items: center; }
+#chips-acq .etichetta { flex: 0 0 auto; font-size: 0.8rem; color: var(--muted); font-weight: 600; padding-right: 2px; }
+#chips-acq .chip[aria-pressed="true"] { background: var(--sold); border-color: var(--sold); color: var(--surface); }
+.chip .conta { opacity: 0.7; font-weight: 500; margin-left: 4px; font-variant-numeric: tabular-nums; }
 .totals { display: flex; gap: 14px; flex-wrap: wrap; font-size: 0.85rem; color: var(--muted); }
 .totals b { color: var(--ink); font-variant-numeric: tabular-nums; }
 
@@ -169,7 +173,7 @@ nav.tabbar svg { width: 22px; height: 22px; }
   <section id="vista-calc" class="wrap" aria-labelledby="t-calc">
     <header>
       <h1 id="t-calc">Calcolatore gift card</h1>
-      <p class="sub">Card da 40 € · 524 punti l'una · <span class="versione">versione 4</span></p>
+      <p class="sub">Card da 40 € · 524 punti l'una · <span class="versione">versione 5</span></p>
     </header>
 
     <div class="panel">
@@ -237,12 +241,13 @@ nav.tabbar svg { width: 22px; height: 22px; }
       </div>
     </div>
 
-    <div class="chips" role="group" aria-label="Filtra per stato">
+    <div class="chips" id="chips-stato" role="group" aria-label="Filtra per stato">
       <button class="chip" data-f="Tutte" aria-pressed="true" type="button">Tutte</button>
       <button class="chip" data-f="Disponibile" aria-pressed="false" type="button">Disponibili</button>
       <button class="chip" data-f="Venduta" aria-pressed="false" type="button">Vendute</button>
       <button class="chip" data-f="Usata" aria-pressed="false" type="button">Usate</button>
     </div>
+    <div class="chips" id="chips-acq" role="group" aria-label="Filtra per acquirente" hidden></div>
     <p class="status" id="stato-salvataggio" aria-live="polite"></p>
     <div class="cards" id="lista">
       <div class="empty">Caricamento dell'inventario…</div>
@@ -282,6 +287,9 @@ nav.tabbar svg { width: 22px; height: 22px; }
   let imp = { valore_punto_usd: 0.066, cambio_usd_eur: 0.86 };
   let card = [];          // [{id, taglio, codice, stato, acquirente, creato}]
   let filtro = "Tutte";
+  let filtroAcq = null;  // acquirente scelto (in minuscolo), null = tutti
+  const chiaveAcq = (s) => String(s || "").trim().toLowerCase();
+  const visibile = (c) => (filtro === "Tutte" || c.stato === filtro) && (filtroAcq === null || chiaveAcq(c.acquirente) === filtroAcq);
   let db = null, colCard = null;
 
   /* ---------- schede ---------- */
@@ -530,7 +538,7 @@ nav.tabbar svg { width: 22px; height: 22px; }
     };
     const acq = el.querySelector(".acq");
     acq.id = "acq-" + c.id; acq.value = c.acquirente || "";
-    acq.oninput = () => modifica(c, "acquirente", acq.value.trim());
+    acq.oninput = () => { modifica(c, "acquirente", acq.value.trim()); renderAcquirenti(); };
     const stati = el.querySelector(".stati");
     for (const s of STATI) {
       const b = document.createElement("button"); b.type = "button"; b.dataset.v = s; b.textContent = s;
@@ -552,7 +560,7 @@ nav.tabbar svg { width: 22px; height: 22px; }
   }
 
   async function prossimoCodice(c) {
-    const visibili = card.filter((x) => filtro === "Tutte" || x.stato === filtro);
+    const visibili = card.filter(visibile);
     const i = visibili.findIndex((x) => x.id === c.id);
     let next = visibili[i + 1];
     if (!next) next = await creaCard("");
@@ -560,29 +568,57 @@ nav.tabbar svg { width: 22px; height: 22px; }
     if (el) el.focus();
   }
 
+  function renderAcquirenti() {
+    const box = $("chips-acq");
+    const acq = new Map();
+    for (const c of card) {
+      const k = chiaveAcq(c.acquirente);
+      if (!k) continue;
+      if (!acq.has(k)) acq.set(k, { nome: c.acquirente.trim(), n: 0 });
+      acq.get(k).n++;
+    }
+    if (filtroAcq !== null && !acq.has(filtroAcq)) filtroAcq = null;
+    box.hidden = acq.size === 0;
+    box.innerHTML = "";
+    if (!acq.size) return;
+    const et = document.createElement("span"); et.className = "etichetta"; et.textContent = "Acquirenti:"; box.append(et);
+    const chip = (k, nome, n) => {
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "chip"; b.setAttribute("aria-pressed", filtroAcq === k);
+      b.textContent = nome;
+      if (n != null) { const c = document.createElement("span"); c.className = "conta"; c.textContent = n; b.append(c); }
+      b.onclick = () => { filtroAcq = k; render(); };
+      box.append(b);
+    };
+    chip(null, "Tutti", null);
+    [...acq.entries()].sort((a, b) => a[1].nome.localeCompare(b[1].nome, "it")).forEach(([k, v]) => chip(k, v.nome, v.n));
+  }
+
   function render() {
     totali();
+    renderAcquirenti();
     const lista = $("lista");
     const attivo = document.activeElement && document.activeElement.id;
-    const visibili = card.filter((c) => filtro === "Tutte" || c.stato === filtro);
+    const visibili = card.filter(visibile);
     lista.innerHTML = "";
     if (!visibili.length) {
       const e = document.createElement("div"); e.className = "empty";
-      e.textContent = card.length ? "Nessuna gift card con questo stato." : "Nessuna gift card. Premi «+ Aggiungi gift card» o incolla più codici insieme.";
+      e.textContent = card.length ? "Nessuna gift card con questi filtri." : "Nessuna gift card. Premi «+ Aggiungi gift card» o incolla più codici insieme.";
       lista.append(e);
     }
     for (const c of visibili) lista.append(rigaCard(c));
     if (attivo) { const el = document.getElementById(attivo); if (el) { el.focus(); if (el.setSelectionRange) { const l = el.value.length; el.setSelectionRange(l, l); } } }
   }
 
-  document.querySelectorAll(".chip").forEach((b) => b.onclick = () => {
+  document.querySelectorAll("#chips-stato .chip").forEach((b) => b.onclick = () => {
     filtro = b.dataset.f;
-    document.querySelectorAll(".chip").forEach((x) => x.setAttribute("aria-pressed", x === b));
+    document.querySelectorAll("#chips-stato .chip").forEach((x) => x.setAttribute("aria-pressed", x === b));
     render();
   });
 
   $("btn-nuova").onclick = async () => {
-    if (filtro !== "Tutte" && filtro !== "Disponibile") { filtro = "Tutte"; document.querySelectorAll(".chip").forEach((x) => x.setAttribute("aria-pressed", x.dataset.f === "Tutte")); }
+    if (filtro !== "Tutte" && filtro !== "Disponibile") { filtro = "Tutte"; document.querySelectorAll("#chips-stato .chip").forEach((x) => x.setAttribute("aria-pressed", x.dataset.f === "Tutte")); }
+    filtroAcq = null;  // una card nuova non ha ancora un acquirente
     const c = await creaCard("");
     const el = document.getElementById("cod-" + c.id); if (el) { el.focus(); el.scrollIntoView({ block: "center" }); }
   };
