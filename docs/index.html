@@ -1,0 +1,584 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#f3f4f1" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#121614" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>Gift Card Bambu</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Gift Card">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Figtree:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+body { margin: 0; padding-top: env(safe-area-inset-top, 0px); }
+/* Layout: app a una colonna per telefono, barra schede in basso come un'app nativa; righe compatte e modificabili sul posto. */
+:root {
+  --bg: #f3f4f1;
+  --surface: #ffffff;
+  --ink: #1b211f;
+  --muted: #66706b;
+  --line: #dde1dc;
+  --accent: #0e7a64;
+  --accent-ink: #ffffff;
+  --accent-soft: #dcefe9;
+  --good: #1d7a3e;
+  --good-soft: #e1f2e6;
+  --bad: #b23a2f;
+  --bad-soft: #f8e3e0;
+  --sold: #2f5fa8;
+  --sold-soft: #e2eaf7;
+  --font-display: "Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
+  --font-body: "Figtree", -apple-system, "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --radius: 14px;
+  --tabbar: 64px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #121614; --surface: #1b201e; --ink: #e9ece9; --muted: #9aa49f; --line: #2c3330;
+    --accent: #3fbf9f; --accent-ink: #08201a; --accent-soft: #173a31;
+    --good: #6fd18e; --good-soft: #17301f; --bad: #f08a7f; --bad-soft: #3a1c19;
+    --sold: #8fb3ee; --sold-soft: #1b2a42; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #121614; --surface: #1b201e; --ink: #e9ece9; --muted: #9aa49f; --line: #2c3330;
+  --accent: #3fbf9f; --accent-ink: #08201a; --accent-soft: #173a31;
+  --good: #6fd18e; --good-soft: #17301f; --bad: #f08a7f; --bad-soft: #3a1c19;
+  --sold: #8fb3ee; --sold-soft: #1b2a42; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; overflow: hidden; }
+body { display: flex; flex-direction: column; }
+main { flex: 1 1 auto; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+body {
+  background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 16px; line-height: 1.4;
+  -webkit-tap-highlight-color: transparent;
+}
+.wrap {
+  max-width: 640px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 18px 28px;
+  display: grid; gap: 16px;
+}
+h1 { font-family: var(--font-display); font-weight: 700; font-size: 1.7rem; margin: 0; letter-spacing: -0.01em; text-wrap: balance; }
+h2 { font-family: var(--font-display); font-weight: 600; font-size: 1.1rem; margin: 0; }
+.sub { color: var(--muted); font-size: 0.9rem; margin: 2px 0 0; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; display: grid; gap: 12px; }
+label.field { display: grid; gap: 6px; font-size: 0.85rem; color: var(--muted); font-weight: 500; }
+input, select, textarea {
+  font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 10px;
+  padding: 10px 12px; width: 100%; min-width: 0; font-size: 16px;
+}
+input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.big-input { font-family: var(--font-display); font-size: 1.8rem; font-weight: 600; padding: 10px 14px; font-variant-numeric: tabular-nums; }
+button { font: inherit; cursor: pointer; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); padding: 10px 14px; font-weight: 600; }
+button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+button.danger { color: var(--bad); }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.row > * { flex: 1 1 auto; }
+
+.answer { display: grid; gap: 4px; }
+.answer .n { font-family: var(--font-display); font-size: 2.6rem; font-weight: 700; line-height: 1; color: var(--accent); font-variant-numeric: tabular-nums; }
+.answer .what { font-weight: 600; }
+.facts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.fact { background: var(--bg); border-radius: 10px; padding: 8px 10px; min-width: 0; }
+.fact b { display: block; font-variant-numeric: tabular-nums; font-size: 1rem; }
+.fact span { font-size: 0.75rem; color: var(--muted); }
+
+.prices { display: grid; gap: 6px; }
+.price-head, .price { display: grid; grid-template-columns: 3.4rem 1fr 1fr auto; gap: 6px; white-space: nowrap; align-items: center; font-variant-numeric: tabular-nums; }
+.price-head { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; padding: 0 10px; }
+.price { background: var(--bg); border-radius: 10px; padding: 9px 10px; }
+.price .p { font-family: var(--font-display); font-weight: 700; font-size: 1.1rem; }
+.price .disc { display: block; font-size: 0.72rem; color: var(--muted); font-weight: 500; font-family: var(--font-body); }
+.price > span { min-width: 0; font-size: 0.95rem; }
+.pill { font-size: 0.78rem; font-weight: 600; border-radius: 999px; padding: 3px 9px; white-space: nowrap; }
+.pill.si { background: var(--good-soft); color: var(--good); }
+.pill.no { background: var(--bad-soft); color: var(--bad); }
+.gain-pos { color: var(--good); font-weight: 600; }
+.gain-neg { color: var(--bad); font-weight: 600; }
+.note { font-size: 0.82rem; color: var(--muted); margin: 0; }
+details summary { cursor: pointer; font-weight: 600; font-size: 0.9rem; }
+details[open] summary { margin-bottom: 10px; }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+.chips { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; }
+.chip { flex: 0 0 auto; border-radius: 999px; padding: 6px 12px; font-size: 0.85rem; font-weight: 600; background: var(--surface); }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.totals { display: flex; gap: 14px; flex-wrap: wrap; font-size: 0.85rem; color: var(--muted); }
+.totals b { color: var(--ink); font-variant-numeric: tabular-nums; }
+
+.cards { display: grid; gap: 10px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px; display: grid; gap: 8px; }
+.card[data-stato="Venduta"] { border-left: 4px solid var(--sold); }
+.card[data-stato="Usata"] { opacity: 0.7; }
+.card-top { display: flex; gap: 8px; align-items: center; }
+.card-top .codice { flex: 1 1 auto; font-family: var(--font-mono); font-size: 15px; letter-spacing: 0.02em; }
+.taglio { flex: 0 0 auto; width: auto; padding: 8px 6px; font-weight: 600; font-size: 14px; }
+.stati { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.stati button { border: 0; border-radius: 0; padding: 8px 4px; font-size: 0.85rem; background: var(--bg); color: var(--muted); }
+.stati button + button { border-left: 1px solid var(--line); }
+.stati button[aria-pressed="true"][data-v="Disponibile"] { background: var(--accent-soft); color: var(--accent); }
+.stati button[aria-pressed="true"][data-v="Venduta"] { background: var(--sold-soft); color: var(--sold); }
+.stati button[aria-pressed="true"][data-v="Usata"] { background: var(--line); color: var(--ink); }
+.card-bottom { display: flex; gap: 8px; }
+.card-bottom input { flex: 1 1 auto; }
+.sr-only { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; pointer-events: none; }
+.filebtn { text-align: center; cursor: pointer; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); padding: 10px 14px; font-weight: 600; }
+.filebtn:focus-within { outline: 2px solid var(--accent); }
+.del { flex: 0 0 auto; padding: 8px 12px; color: var(--muted); }
+.del.armed { background: var(--bad); color: #fff; border-color: var(--bad); }
+.empty { text-align: center; color: var(--muted); padding: 28px 12px; border: 1px dashed var(--line); border-radius: var(--radius); }
+.status { font-size: 0.8rem; color: var(--muted); min-height: 1.2em; }
+
+nav.tabbar {
+  position: relative; flex: 0 0 auto; z-index: 20;
+  background: var(--surface); border-top: 1px solid var(--line);
+  padding: 6px max(16px, env(safe-area-inset-right, 0px)) calc(6px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+  display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+}
+nav.tabbar button { border: 0; background: transparent; color: var(--muted); padding: 10px 6px; font-size: 0.9rem; display: grid; justify-items: center; gap: 2px; }
+nav.tabbar button[aria-selected="true"] { color: var(--accent); background: var(--accent-soft); }
+nav.tabbar svg { width: 22px; height: 22px; }
+@media (prefers-reduced-motion: no-preference) { .card, .price { transition: background-color .2s; } }
+</style>
+
+</head>
+<body>
+<main>
+  <section id="vista-calc" class="wrap" aria-labelledby="t-calc">
+    <header>
+      <h1 id="t-calc">Calcolatore gift card</h1>
+      <p class="sub">Card da 40 € · 524 punti l'una</p>
+    </header>
+
+    <div class="panel">
+      <label class="field" for="prezzo">Prezzo dell'oggetto su Bambu Lab (€)
+        <input id="prezzo" class="big-input" inputmode="decimal" placeholder="es. 259" autocomplete="off">
+      </label>
+      <div class="answer" aria-live="polite">
+        <span class="n" id="n-card">1</span>
+        <span class="what" id="n-what">gift card da 40 € (esempio)</span>
+      </div>
+      <div class="facts">
+        <div class="fact"><b id="f-valore">40,00 €</b><span>valore card</span></div>
+        <div class="fact"><b id="f-punti">524</b><span>punti</span></div>
+        <div class="fact"><b id="f-avanzo">0,00 €</b><span>avanzo</span></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div>
+        <h2>A che prezzo vendere</h2>
+        <p class="note" id="nota-soldi">Convertendo gli stessi punti in soldi avresti 29,74 €.</p>
+      </div>
+      <div class="prices" id="prezzi">
+        <div class="price-head"><span>Card a</span><span>Incassi</span><span>Guadagno</span><span></span></div>
+      </div>
+      <p class="note">«Guadagno» è quanto ci guadagni in più vendendo le card invece di convertire i punti in soldi.</p>
+    </div>
+
+    <details class="panel">
+      <summary>Valore dei punti in soldi</summary>
+      <div class="two">
+        <label class="field" for="valore-punto">1 punto vale (USD)
+          <input id="valore-punto" inputmode="decimal" value="0.066">
+        </label>
+        <label class="field" for="cambio">1 USD = ? EUR
+          <input id="cambio" inputmode="decimal" value="0.86">
+        </label>
+      </div>
+      <p class="note" id="nota-minimo"></p>
+    </details>
+  </section>
+
+  <section id="vista-inv" class="wrap" aria-labelledby="t-inv" hidden>
+    <header>
+      <h1 id="t-inv">Inventario gift card</h1>
+      <div class="totals" id="totali"></div>
+    </header>
+
+    <div class="row">
+      <button class="primary" id="btn-nuova" type="button">+ Aggiungi gift card</button>
+      <button id="btn-multi" type="button" aria-expanded="false">Incolla più codici</button>
+    </div>
+    <div class="row">
+      <label class="filebtn" for="file-import">Importa file dal PC</label>
+      <input id="file-import" type="file" accept=".csv,text/csv,text/plain" class="sr-only">
+      <button id="btn-esporta" type="button">Esporta per il PC</button>
+    </div>
+    <div class="panel" id="multi" hidden>
+      <label class="field" for="multi-testo">Incolla i codici, uno per riga
+        <textarea id="multi-testo" rows="5" placeholder="ABCD-1234-EFGH&#10;IJKL-5678-MNOP"></textarea>
+      </label>
+      <div class="row">
+        <button class="primary" id="btn-multi-ok" type="button">Aggiungi codici</button>
+        <button id="btn-multi-annulla" type="button">Annulla</button>
+      </div>
+    </div>
+
+    <div class="chips" role="group" aria-label="Filtra per stato">
+      <button class="chip" data-f="Tutte" aria-pressed="true" type="button">Tutte</button>
+      <button class="chip" data-f="Disponibile" aria-pressed="false" type="button">Disponibili</button>
+      <button class="chip" data-f="Venduta" aria-pressed="false" type="button">Vendute</button>
+      <button class="chip" data-f="Usata" aria-pressed="false" type="button">Usate</button>
+    </div>
+    <p class="status" id="stato-salvataggio" aria-live="polite"></p>
+    <div class="cards" id="lista">
+      <div class="empty">Caricamento dell'inventario…</div>
+    </div>
+  </section>
+</main>
+
+<nav class="tabbar" role="tablist" aria-label="Sezioni">
+  <button role="tab" id="tab-calc" aria-selected="true" aria-controls="vista-calc" type="button">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2.5"/><path d="M8.5 7.5h7M8.5 12h1M11.5 12h1M14.5 12h1M8.5 15.5h1M11.5 15.5h1M14.5 15.5h1"/></svg>
+    Calcolatore
+  </button>
+  <button role="tab" id="tab-inv" aria-selected="false" aria-controls="vista-inv" type="button">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="2.5"/><path d="M3 10h18M7 14.5h4"/></svg>
+    Inventario
+  </button>
+</nav>
+
+<script>
+(() => {
+  const TAGLI = { "Gift card 40 €": { valore: 40, punti: 524 }, "Gift card 200 €": { valore: 200, punti: 2620 } };
+  const T40 = "Gift card 40 €";
+  const STATI = ["Disponibile", "Venduta", "Usata"];
+  const PREZZI = [30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40];
+  const $ = (id) => document.getElementById(id);
+  const fmtEur = (v) => v.toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
+  const fmtInt = (v) => v.toLocaleString("it-IT");
+  const num = (s) => { const x = parseFloat(String(s).replace(",", ".").replace(/[€$\s]/g, "")); return isNaN(x) ? NaN : x; };
+
+  let imp = { valore_punto_usd: 0.066, cambio_usd_eur: 0.86 };
+  let card = [];          // [{id, taglio, codice, stato, acquirente, creato}]
+  let filtro = "Tutte";
+  let db = null, colCard = null;
+
+  /* ---------- schede ---------- */
+  function mostra(vista) {
+    const calc = vista === "calc";
+    $("vista-calc").hidden = !calc; $("vista-inv").hidden = calc;
+    $("tab-calc").setAttribute("aria-selected", calc); $("tab-inv").setAttribute("aria-selected", !calc);
+    document.querySelector("main").scrollTop = 0;
+    try { localStorage.setItem("gc-vista", vista); } catch (e) {}
+  }
+  $("tab-calc").onclick = () => mostra("calc");
+  $("tab-inv").onclick = () => mostra("inv");
+  try { if (localStorage.getItem("gc-vista") === "inv") mostra("inv"); } catch (e) {}
+
+  /* ---------- calcolatore ---------- */
+  const soldiPerPunti = (punti) => punti * imp.valore_punto_usd * imp.cambio_usd_eur;
+
+  function combinazione() {
+    const p = num($("prezzo").value);
+    if (!(p > 0)) return { n: 1, valore: 40, punti: 524, avanzo: 0, esempio: true };
+    const n = Math.ceil(Math.round(p / 40 * 1e9) / 1e9);
+    return { n, valore: n * 40, punti: n * 524, avanzo: n * 40 - p, esempio: false };
+  }
+
+  function aggiornaCalcolo() {
+    const c = combinazione();
+    $("n-card").textContent = c.n;
+    $("n-what").textContent = c.esempio ? "gift card da 40 € (esempio)" : (c.n === 1 ? "gift card da 40 € ti serve" : "gift card da 40 € ti servono");
+    $("f-valore").textContent = fmtEur(c.valore);
+    $("f-punti").textContent = fmtInt(c.punti);
+    $("f-avanzo").textContent = fmtEur(c.avanzo);
+    const soldi = soldiPerPunti(c.punti);
+    $("nota-soldi").textContent = `Convertendo i ${fmtInt(c.punti)} punti in soldi avresti ${fmtEur(soldi)}.`;
+    $("nota-minimo").textContent = `524 punti valgono ${fmtEur(soldiPerPunti(524))}: vendere una card da 40 € conviene sopra questo prezzo.`;
+    const box = $("prezzi");
+    box.querySelectorAll(".price").forEach((el) => el.remove());
+    for (const p of PREZZI) {
+      const incasso = c.n * p, guadagno = incasso - soldi, si = incasso > soldi;
+      const r = document.createElement("div");
+      r.className = "price";
+      r.innerHTML = `<span class="p"></span><span class="inc"></span><span></span><span class="pill ${si ? "si" : "no"}">${si ? "Conviene" : "No"}</span>`;
+      r.children[0].textContent = p + " €";
+      const d = document.createElement("span"); d.className = "disc"; d.textContent = `−${Math.round((1 - p / 40) * 1000) / 10}%`;
+      r.children[0].append(d);
+      r.children[1].textContent = fmtEur(incasso);
+      r.children[2].textContent = (guadagno >= 0 ? "+" : "") + fmtEur(guadagno);
+      r.children[2].className = guadagno >= 0 ? "gain-pos" : "gain-neg";
+      box.append(r);
+    }
+  }
+  $("prezzo").addEventListener("input", aggiornaCalcolo);
+
+  let timerImp = null;
+  function impCambiate() {
+    const vp = num($("valore-punto").value), cb = num($("cambio").value);
+    if (vp > 0) imp.valore_punto_usd = vp;
+    if (cb > 0) imp.cambio_usd_eur = cb;
+    aggiornaCalcolo();
+    clearTimeout(timerImp);
+    timerImp = setTimeout(salvaImp, 800);
+  }
+  $("valore-punto").addEventListener("input", impCambiate);
+  $("cambio").addEventListener("input", impCambiate);
+
+  /* ---------- importa / esporta file (stesso formato CSV dell'app per PC) ---------- */
+  function normTaglio(t) { return /200/.test(String(t)) ? "Gift card 200 €" : T40; }
+  function normStato(s) { const x = STATI.find((k) => k.toLowerCase() === String(s || "").trim().toLowerCase()); return x || "Disponibile"; }
+  function leggiCSV(testo) {
+    testo = testo.replace(/^﻿/, "");
+    const righe = testo.split(/\r?\n/).filter((r) => r.trim());
+    if (!righe.length) return [];
+    const sep = (righe[0].match(/;/g) || []).length >= (righe[0].match(/,/g) || []).length ? ";" : ",";
+    const split = (r) => { const out = []; let cur = "", q = false;
+      for (let i = 0; i < r.length; i++) { const ch = r[i];
+        if (q) { if (ch === '"' && r[i + 1] === '"') { cur += '"'; i++; } else if (ch === '"') q = false; else cur += ch; }
+        else if (ch === '"') q = true; else if (ch === sep) { out.push(cur); cur = ""; } else cur += ch; }
+      out.push(cur); return out.map((x) => x.trim()); };
+    const head = split(righe[0]).map((h) => h.toLowerCase());
+    const ix = (k) => head.indexOf(k);
+    if (ix("codice") < 0) throw new Error("colonna codice mancante");
+    return righe.slice(1).map(split).map((v) => ({
+      taglio: ix("taglio") >= 0 ? v[ix("taglio")] : "", codice: v[ix("codice")] || "",
+      stato: ix("stato") >= 0 ? v[ix("stato")] : "", acquirente: ix("acquirente") >= 0 ? v[ix("acquirente")] || "" : "" }));
+  }
+  $("file-import").addEventListener("change", async (e) => {
+    const f = e.target.files && e.target.files[0];
+    e.target.value = "";
+    if (!f) return;
+    let righe;
+    try { righe = leggiCSV(await f.text()); }
+    catch (err) { avviso("File non valido: usa il file esportato dall'app per PC (Esporta CSV)."); return; }
+    let nuove = 0, aggiornate = 0;
+    for (const r of righe) {
+      const codice = r.codice.trim();
+      if (!codice) continue;
+      const dati = { taglio: normTaglio(r.taglio), stato: normStato(r.stato), acquirente: r.acquirente.trim() };
+      const esist = card.find((c) => c.codice === codice);
+      if (esist) {
+        if (esist.taglio !== dati.taglio || esist.stato !== dati.stato || (esist.acquirente || "") !== dati.acquirente) {
+          Object.assign(esist, dati); await scriviCard(esist); aggiornate++;
+        }
+      } else {
+        const c = { id: nuovoId(), codice, ...dati, creato: Date.now() + nuove };
+        card.push(c); await scriviCard(c); nuove++;
+      }
+    }
+    render();
+    avviso(`Importazione fatta: ${nuove} nuove, ${aggiornate} aggiornate.`);
+  });
+  $("btn-esporta").onclick = async () => {
+    const q = (s) => /[;"\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+    const righe = ["taglio;codice;stato;acquirente"].concat(card.filter((c) => c.codice || c.acquirente)
+      .map((c) => [c.taglio, c.codice || "", c.stato, c.acquirente || ""].map((x) => q(String(x))).join(";")));
+    const testo = "﻿" + righe.join("\r\n") + "\r\n";
+    const dl = await (window.claude && window.claude.use ? window.claude.use("downloads") : null);
+    if (!dl) {
+      // fuori da Claude (app sulla schermata Home): foglio Condividi di iOS, altrimenti download normale
+      const file = new File([testo], "gift_card_bambu.csv", { type: "text/csv" });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        try { await navigator.share({ files: [file] }); avviso("File pronto: salvalo in File o mandalo al PC."); } catch (err) {}
+        return;
+      }
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(file); a.download = file.name;
+      document.body.append(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+      avviso("File salvato.");
+      return;
+    }
+    try { await dl.save({ filename: "gift_card_bambu.csv", data: new Blob([testo], { type: "text/csv" }) }); avviso("File salvato."); }
+    catch (err) { if (!err || err.code !== "declined") avviso("File non salvato, riprova."); }
+  };
+
+  /* ---------- archivio ---------- */
+  const LS_KEY = "gc-inventario";
+  function salvaLocale() { try { localStorage.setItem(LS_KEY, JSON.stringify({ imp, card })); } catch (e) {} }
+  function caricaLocale() {
+    try { const d = JSON.parse(localStorage.getItem(LS_KEY) || "null"); if (d) { imp = d.imp || imp; card = d.card || []; } } catch (e) {}
+  }
+  function avviso(t) { $("stato-salvataggio").textContent = t; }
+
+  async function salvaImp() {
+    if (db) { try { await db.doc("impostazioni/valori").set({ ...imp }); } catch (e) { avviso("Impostazioni non salvate, riprova."); } }
+    else salvaLocale();
+  }
+
+  function nuovoId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+
+  async function creaCard(codice) {
+    const c = { id: nuovoId(), taglio: T40, codice, stato: "Disponibile", acquirente: "", creato: Date.now() };
+    card.push(c);
+    render();
+    await scriviCard(c);
+    return c;
+  }
+
+  const inScrittura = new Map();  // una scrittura alla volta per card
+  async function scriviCard(c) {
+    if (!db) { salvaLocale(); avviso("Salvato su questo dispositivo"); return; }
+    const prec = inScrittura.get(c.id) || Promise.resolve();
+    const job = prec.then(async () => {
+      const { id, ...body } = c;
+      try { await colCard.doc(id).set(body); avviso("Salvato"); }
+      catch (e) { avviso(e && e.code === "quota_exceeded" ? "Spazio esaurito: elimina qualche card vecchia." : "Modifica non salvata, riprova."); }
+    });
+    inScrittura.set(c.id, job);
+    return job;
+  }
+
+  async function eliminaCard(c) {
+    card = card.filter((x) => x.id !== c.id);
+    render();
+    if (db) { try { await colCard.doc(c.id).delete(); avviso("Eliminata"); } catch (e) { avviso("Eliminazione non riuscita, riprova."); } }
+    else salvaLocale();
+  }
+
+  /* ---------- inventario ---------- */
+  function totali() {
+    const n = { Disponibile: 0, Venduta: 0, Usata: 0 }; let valore = 0;
+    for (const c of card) { n[c.stato] = (n[c.stato] || 0) + 1; if (c.stato === "Disponibile") valore += (TAGLI[c.taglio] || TAGLI[T40]).valore; }
+    $("totali").innerHTML = "";
+    const parti = [["Disponibili", `${n.Disponibile} (${fmtEur(valore)})`], ["Vendute", n.Venduta], ["Usate", n.Usata]];
+    for (const [k, v] of parti) { const s = document.createElement("span"); s.append(k + ": "); const b = document.createElement("b"); b.textContent = v; s.append(b); $("totali").append(s); }
+  }
+
+  const debounce = new Map();
+  function modifica(c, campo, valore, subito) {
+    c[campo] = valore;
+    clearTimeout(debounce.get(c.id));
+    if (subito) scriviCard(c);
+    else debounce.set(c.id, setTimeout(() => scriviCard(c), 600));
+    totali();
+  }
+
+  function rigaCard(c) {
+    const el = document.createElement("article");
+    el.className = "card"; el.dataset.stato = c.stato; el.dataset.id = c.id;
+    el.innerHTML = `
+      <div class="card-top">
+        <select class="taglio" aria-label="Taglio"></select>
+        <input class="codice" placeholder="Codice gift card" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Codice">
+      </div>
+      <div class="stati" role="group" aria-label="Stato"></div>
+      <div class="card-bottom">
+        <input class="acq" placeholder="Acquirente" autocomplete="off" aria-label="Acquirente">
+        <button class="del" type="button">Elimina</button>
+      </div>`;
+    const sel = el.querySelector(".taglio");
+    for (const t of Object.keys(TAGLI)) { const o = document.createElement("option"); o.value = t; o.textContent = TAGLI[t].valore + " €"; sel.append(o); }
+    sel.value = c.taglio in TAGLI ? c.taglio : T40;
+    sel.onchange = () => { modifica(c, "taglio", sel.value, true); };
+    const cod = el.querySelector(".codice");
+    cod.id = "cod-" + c.id; cod.value = c.codice || "";
+    cod.oninput = () => modifica(c, "codice", cod.value.trim());
+    cod.onkeydown = (e) => { if (e.key === "Enter") { e.preventDefault(); prossimoCodice(c); } };
+    const acq = el.querySelector(".acq");
+    acq.id = "acq-" + c.id; acq.value = c.acquirente || "";
+    acq.oninput = () => modifica(c, "acquirente", acq.value.trim());
+    const stati = el.querySelector(".stati");
+    for (const s of STATI) {
+      const b = document.createElement("button"); b.type = "button"; b.dataset.v = s; b.textContent = s;
+      b.setAttribute("aria-pressed", c.stato === s);
+      b.onclick = () => {
+        modifica(c, "stato", s, true); el.dataset.stato = s;
+        stati.querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", x.dataset.v === s));
+        if (s === "Venduta" && !acq.value) acq.focus();
+      };
+      stati.append(b);
+    }
+    const del = el.querySelector(".del");
+    del.onclick = () => {
+      if (del.classList.contains("armed")) { eliminaCard(c); return; }
+      del.classList.add("armed"); del.textContent = "Conferma";
+      setTimeout(() => { del.classList.remove("armed"); del.textContent = "Elimina"; }, 3000);
+    };
+    return el;
+  }
+
+  async function prossimoCodice(c) {
+    const visibili = card.filter((x) => filtro === "Tutte" || x.stato === filtro);
+    const i = visibili.findIndex((x) => x.id === c.id);
+    let next = visibili[i + 1];
+    if (!next) next = await creaCard("");
+    const el = document.getElementById("cod-" + next.id);
+    if (el) el.focus();
+  }
+
+  function render() {
+    totali();
+    const lista = $("lista");
+    const attivo = document.activeElement && document.activeElement.id;
+    const visibili = card.filter((c) => filtro === "Tutte" || c.stato === filtro);
+    lista.innerHTML = "";
+    if (!visibili.length) {
+      const e = document.createElement("div"); e.className = "empty";
+      e.textContent = card.length ? "Nessuna gift card con questo stato." : "Nessuna gift card. Premi «+ Aggiungi gift card» o incolla più codici insieme.";
+      lista.append(e);
+    }
+    for (const c of visibili) lista.append(rigaCard(c));
+    if (attivo) { const el = document.getElementById(attivo); if (el) { el.focus(); if (el.setSelectionRange) { const l = el.value.length; el.setSelectionRange(l, l); } } }
+  }
+
+  document.querySelectorAll(".chip").forEach((b) => b.onclick = () => {
+    filtro = b.dataset.f;
+    document.querySelectorAll(".chip").forEach((x) => x.setAttribute("aria-pressed", x === b));
+    render();
+  });
+
+  $("btn-nuova").onclick = async () => {
+    if (filtro !== "Tutte" && filtro !== "Disponibile") { filtro = "Tutte"; document.querySelectorAll(".chip").forEach((x) => x.setAttribute("aria-pressed", x.dataset.f === "Tutte")); }
+    const c = await creaCard("");
+    const el = document.getElementById("cod-" + c.id); if (el) { el.focus(); el.scrollIntoView({ block: "center" }); }
+  };
+  $("btn-multi").onclick = () => { const m = $("multi"); m.hidden = !m.hidden; $("btn-multi").setAttribute("aria-expanded", !m.hidden); if (!m.hidden) $("multi-testo").focus(); };
+  $("btn-multi-annulla").onclick = () => { $("multi").hidden = true; $("btn-multi").setAttribute("aria-expanded", false); };
+  $("btn-multi-ok").onclick = async () => {
+    const esistenti = new Set(card.map((c) => c.codice));
+    const codici = [...new Set($("multi-testo").value.split(/\r?\n/).map((s) => s.trim()).filter(Boolean))];
+    const nuovi = codici.filter((k) => !esistenti.has(k));
+    for (const k of nuovi) await creaCard(k);
+    $("multi-testo").value = ""; $("multi").hidden = true; $("btn-multi").setAttribute("aria-expanded", false);
+    const doppi = codici.length - nuovi.length;
+    avviso(`Aggiunte ${nuovi.length} gift card` + (doppi ? `, ${doppi} codici erano già presenti.` : "."));
+  };
+
+  /* ---------- avvio ---------- */
+  try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
+  aggiornaCalcolo();
+  render();
+
+  (async () => {
+    db = window.claude && window.claude.use ? await window.claude.use("db") : null;
+    if (!db) {
+      caricaLocale();
+      $("valore-punto").value = imp.valore_punto_usd; $("cambio").value = imp.cambio_usd_eur;
+      aggiornaCalcolo(); render();
+      avviso("I dati sono salvati su questo telefono. Ogni tanto fai una copia con «Esporta per il PC».");
+      return;
+    }
+    colCard = db.collection("card");
+    db.doc("impostazioni/valori").get().then((s) => {
+      if (s.exists) { const d = s.data(); imp = { valore_punto_usd: d.valore_punto_usd || imp.valore_punto_usd, cambio_usd_eur: d.cambio_usd_eur || imp.cambio_usd_eur };
+        $("valore-punto").value = imp.valore_punto_usd; $("cambio").value = imp.cambio_usd_eur; aggiornaCalcolo(); }
+    }).catch(() => {});
+    let primo = true;
+    colCard.orderBy("creato").onSnapshot((snap) => {
+      const occupato = document.activeElement && document.activeElement.closest && document.activeElement.closest(".card");
+      const remoti = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      const locali = new Map(card.map((c) => [c.id, c]));
+      // tiene la versione locale delle card che si stanno scrivendo ora
+      card = remoti.map((r) => (occupato && occupato.dataset.id === r.id && locali.get(r.id)) || r);
+      if (primo || !occupato) render(); else totali();
+      primo = false;
+    }, () => avviso("Collegamento all'inventario perso: ricarica la pagina."));
+  })();
+})();
+</script>
+
+</body>
+</html>
