@@ -121,6 +121,10 @@ details[open] summary { margin-bottom: 10px; }
 .card[data-stato="Usata"] { opacity: 0.7; }
 .card-top { display: flex; gap: 8px; align-items: center; }
 .card-top .codice { flex: 1 1 auto; font-family: var(--font-mono); font-size: 15px; letter-spacing: 0.02em; }
+.codice.nascosto { -webkit-text-security: disc; text-security: disc; letter-spacing: 0.12em; }
+.icon-btn { flex: 0 0 auto; width: 42px; height: 42px; padding: 0; display: grid; place-items: center; color: var(--muted); }
+.icon-btn svg { width: 20px; height: 20px; }
+.icon-btn.ok { color: var(--good); border-color: var(--good); }
 .taglio { flex: 0 0 auto; width: auto; padding: 8px 6px; font-weight: 600; font-size: 14px; }
 .stati { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
 .stati button { border: 0; border-radius: 0; padding: 8px 4px; font-size: 0.85rem; background: var(--bg); color: var(--muted); }
@@ -147,6 +151,18 @@ nav.tabbar {
 nav.tabbar button { border: 0; background: transparent; color: var(--muted); padding: 10px 6px; font-size: 0.9rem; display: grid; justify-items: center; gap: 2px; }
 nav.tabbar button[aria-selected="true"] { color: var(--accent); background: var(--accent-soft); }
 nav.tabbar svg { width: 22px; height: 22px; }
+/* schermo grande (PC): barra in alto, calcolatore su due colonne, card in griglia */
+@media (min-width: 900px) {
+  nav.tabbar { order: -1; border-top: 0; border-bottom: 1px solid var(--line); padding: 8px max(16px, env(safe-area-inset-right, 0px)) 8px max(16px, env(safe-area-inset-left, 0px)); grid-template-columns: repeat(2, 180px); justify-content: center; }
+  nav.tabbar button { display: flex; justify-content: center; align-items: center; gap: 8px; }
+  .wrap { max-width: 1120px; padding-block: 28px 40px; }
+  #vista-calc { grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); grid-template-rows: auto auto 1fr; align-items: start; }
+  #vista-calc > header { grid-column: 1 / -1; }
+  #vista-calc > .panel:nth-of-type(2) { grid-column: 2; grid-row: 2 / span 2; }
+  #vista-calc > details { grid-column: 1; }
+  .cards { grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); }
+  #vista-inv > .row { max-width: 640px; }
+}
 @media (prefers-reduced-motion: no-preference) { .card, .price { transition: background-color .2s; } }
 </style>
 
@@ -210,9 +226,9 @@ nav.tabbar svg { width: 22px; height: 22px; }
       <button id="btn-multi" type="button" aria-expanded="false">Incolla più codici</button>
     </div>
     <div class="row">
-      <label class="filebtn" for="file-import">Importa file dal PC</label>
+      <label class="filebtn" for="file-import">Importa file</label>
       <input id="file-import" type="file" accept=".csv,text/csv,text/plain" class="sr-only">
-      <button id="btn-esporta" type="button">Esporta per il PC</button>
+      <button id="btn-esporta" type="button">Esporta file</button>
     </div>
     <div class="panel" id="multi" hidden>
       <label class="field" for="multi-testo">Incolla i codici, uno per riga
@@ -253,6 +269,13 @@ nav.tabbar svg { width: 22px; height: 22px; }
   const TAGLI = { "Gift card 40 €": { valore: 40, punti: 524 }, "Gift card 200 €": { valore: 200, punti: 2620 } };
   const T40 = "Gift card 40 €";
   const STATI = ["Disponibile", "Venduta", "Usata"];
+  const MASCHERA_CSS = window.CSS && CSS.supports && CSS.supports("-webkit-text-security", "disc");
+  const codiciVisibili = new Set();  // card con il codice in chiaro (di base sono nascosti)
+  const SVG = (d) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+  const ICONA_OCCHIO = SVG('<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>');
+  const ICONA_OCCHIO_CHIUSO = SVG('<path d="M3 3l18 18"/><path d="M10.6 5.1A10.7 10.7 0 0 1 12 5c6.4 0 10 7 10 7a17.6 17.6 0 0 1-3.2 4.2M6.6 6.6A17.4 17.4 0 0 0 2 12s3.6 7 10 7a10.4 10.4 0 0 0 5.4-1.5"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/>');
+  const ICONA_COPIA = SVG('<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/>');
+  const ICONA_OK = SVG('<path d="M5 12.5l4.5 4.5L19 7.5"/>');
   const PREZZI = [30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40];
   const $ = (id) => document.getElementById(id);
   const fmtEur = (v) => v.toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
@@ -326,7 +349,7 @@ nav.tabbar svg { width: 22px; height: 22px; }
   $("valore-punto").addEventListener("input", impCambiate);
   $("cambio").addEventListener("input", impCambiate);
 
-  /* ---------- importa / esporta file (stesso formato CSV dell'app per PC) ---------- */
+  /* ---------- importa / esporta file (CSV: taglio;codice;stato;acquirente) ---------- */
   function normTaglio(t) { return /200/.test(String(t)) ? "Gift card 200 €" : T40; }
   function normStato(s) { const x = STATI.find((k) => k.toLowerCase() === String(s || "").trim().toLowerCase()); return x || "Disponibile"; }
   function leggiCSV(testo) {
@@ -352,7 +375,7 @@ nav.tabbar svg { width: 22px; height: 22px; }
     if (!f) return;
     let righe;
     try { righe = leggiCSV(await f.text()); }
-    catch (err) { avviso("File non valido: usa il file esportato dall'app per PC (Esporta CSV)."); return; }
+    catch (err) { avviso("File non valido: usa un file creato con «Esporta file»."); return; }
     let nuove = 0, aggiornate = 0;
     for (const r of righe) {
       const codice = r.codice.trim();
@@ -380,8 +403,8 @@ nav.tabbar svg { width: 22px; height: 22px; }
     if (!dl) {
       // fuori da Claude (app sulla schermata Home): foglio Condividi di iOS, altrimenti download normale
       const file = new File([testo], "gift_card_bambu.csv", { type: "text/csv" });
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        try { await navigator.share({ files: [file] }); avviso("File pronto: salvalo in File o mandalo al PC."); } catch (err) {}
+      if (matchMedia("(pointer: coarse)").matches && navigator.canShare && navigator.canShare({ files: [file] })) {
+        try { await navigator.share({ files: [file] }); avviso("File pronto: salvalo in File o mandalo all'altro dispositivo."); } catch (err) {}
         return;
       }
       const a = document.createElement("a");
@@ -412,6 +435,7 @@ nav.tabbar svg { width: 22px; height: 22px; }
 
   async function creaCard(codice) {
     const c = { id: nuovoId(), taglio: T40, codice, stato: "Disponibile", acquirente: "", creato: Date.now() };
+    if (!codice) codiciVisibili.add(c.id);  // card nuova vuota: codice in chiaro per poterlo scrivere
     card.push(c);
     render();
     await scriviCard(c);
@@ -463,6 +487,8 @@ nav.tabbar svg { width: 22px; height: 22px; }
       <div class="card-top">
         <select class="taglio" aria-label="Taglio"></select>
         <input class="codice" placeholder="Codice gift card" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-label="Codice">
+        <button class="icon-btn occhio" type="button"></button>
+        <button class="icon-btn copia" type="button" aria-label="Copia codice" title="Copia codice">${ICONA_COPIA}</button>
       </div>
       <div class="stati" role="group" aria-label="Stato"></div>
       <div class="card-bottom">
@@ -477,6 +503,34 @@ nav.tabbar svg { width: 22px; height: 22px; }
     cod.id = "cod-" + c.id; cod.value = c.codice || "";
     cod.oninput = () => modifica(c, "codice", cod.value.trim());
     cod.onkeydown = (e) => { if (e.key === "Enter") { e.preventDefault(); prossimoCodice(c); } };
+    const occhio = el.querySelector(".occhio");
+    const applicaVista = () => {
+      const vis = codiciVisibili.has(c.id);
+      if (MASCHERA_CSS) cod.classList.toggle("nascosto", !vis); else cod.type = vis ? "text" : "password";
+      occhio.innerHTML = vis ? ICONA_OCCHIO_CHIUSO : ICONA_OCCHIO;
+      occhio.setAttribute("aria-label", vis ? "Nascondi codice" : "Mostra codice");
+      occhio.title = occhio.getAttribute("aria-label");
+      occhio.setAttribute("aria-pressed", vis);
+    };
+    applicaVista();
+    occhio.onclick = () => { if (codiciVisibili.has(c.id)) codiciVisibili.delete(c.id); else codiciVisibili.add(c.id); applicaVista(); };
+    const copia = el.querySelector(".copia");
+    copia.onclick = () => {
+      const testo = cod.value.trim();
+      if (!testo) { avviso("Questa card non ha ancora un codice."); return; }
+      const fatto = () => {
+        copia.classList.add("ok"); copia.innerHTML = ICONA_OK; avviso("Codice copiato.");
+        setTimeout(() => { copia.classList.remove("ok"); copia.innerHTML = ICONA_COPIA; }, 1500);
+      };
+      const riserva = () => {
+        const t = document.createElement("textarea"); t.value = testo; t.setAttribute("readonly", "");
+        t.style.position = "fixed"; t.style.opacity = "0"; document.body.append(t); t.select();
+        let ok = false; try { ok = document.execCommand("copy"); } catch (e) {}
+        t.remove(); if (ok) fatto(); else avviso("Copia non riuscita: mostra il codice e copialo a mano.");
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(testo).then(fatto, riserva);
+      else riserva();
+    };
     const acq = el.querySelector(".acq");
     acq.id = "acq-" + c.id; acq.value = c.acquirente || "";
     acq.oninput = () => modifica(c, "acquirente", acq.value.trim());
@@ -558,7 +612,7 @@ nav.tabbar svg { width: 22px; height: 22px; }
       caricaLocale();
       $("valore-punto").value = imp.valore_punto_usd; $("cambio").value = imp.cambio_usd_eur;
       aggiornaCalcolo(); render();
-      avviso("I dati sono salvati su questo telefono. Ogni tanto fai una copia con «Esporta per il PC».");
+      avviso("I dati sono salvati su questo dispositivo. Per averli anche sull'altro usa «Esporta file» e «Importa file».");
       return;
     }
     colCard = db.collection("card");
