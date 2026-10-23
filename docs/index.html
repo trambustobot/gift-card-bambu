@@ -125,8 +125,10 @@ details[open] summary { margin-bottom: 10px; }
 
 .cards { display: grid; gap: 10px; }
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px; display: grid; gap: 8px; }
-.card[data-stato="Venduta"] { border-left: 4px solid var(--sold); }
-.card[data-stato="Usata"] { opacity: 0.7; }
+.card { border-width: 2px; }
+.card[data-stato="Disponibile"] { border-color: var(--accent); }
+.card[data-stato="Venduta"] { border-color: var(--sold); }
+.card[data-stato="Usata"] { border-color: var(--muted); opacity: 0.7; }
 .card-top { display: flex; gap: 8px; align-items: center; }
 .card-top .codice { flex: 1 1 auto; font-family: var(--font-mono); font-size: 15px; letter-spacing: 0.02em; }
 .codice.nascosto { -webkit-text-security: disc; text-security: disc; letter-spacing: 0.12em; }
@@ -134,14 +136,25 @@ details[open] summary { margin-bottom: 10px; }
 .icon-btn svg { width: 20px; height: 20px; }
 .icon-btn.ok { color: var(--good); border-color: var(--good); }
 .taglio { flex: 0 0 auto; width: auto; padding: 8px 6px; font-weight: 600; font-size: 14px; }
-.stati { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.stato-riga { display: flex; gap: 8px; align-items: stretch; }
+.stato-riga .stati { flex: 1 1 auto; }
+.usata[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.stati { display: grid; grid-template-columns: repeat(2, 1fr); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
 .stati button { border: 0; border-radius: 0; padding: 8px 4px; font-size: 0.85rem; background: var(--bg); color: var(--muted); }
 .stati button + button { border-left: 1px solid var(--line); }
 .stati button[aria-pressed="true"][data-v="Disponibile"] { background: var(--accent-soft); color: var(--accent); }
 .stati button[aria-pressed="true"][data-v="Venduta"] { background: var(--sold-soft); color: var(--sold); }
-.stati button[aria-pressed="true"][data-v="Usata"] { background: var(--line); color: var(--ink); }
 .card-bottom { display: flex; gap: 8px; }
 .card-bottom input { flex: 1 1 auto; }
+.acq-wrap { position: relative; flex: 1 1 auto; min-width: 0; display: flex; }
+.acq-wrap input { padding-right: 40px; }
+.acq-x { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); width: 26px; height: 26px; padding: 0; border-radius: 50%; display: grid; place-items: center; background: var(--line); border: 0; color: var(--ink); }
+.acq-x svg { width: 14px; height: 14px; }
+.assegna { display: grid; gap: 10px; }
+.assegna-riga { display: flex; gap: 8px; flex-wrap: wrap; align-items: end; }
+.assegna-riga label.field { flex: 1 1 160px; }
+.assegna-riga label.field.qta { flex: 0 1 110px; }
+.assegna-riga button { flex: 0 0 auto; }
 .sr-only { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; pointer-events: none; }
 .filebtn { text-align: center; cursor: pointer; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); padding: 10px 14px; font-weight: 600; }
 .filebtn:focus-within { outline: 2px solid var(--accent); }
@@ -180,7 +193,7 @@ nav.tabbar svg { width: 22px; height: 22px; }
   <section id="vista-calc" class="wrap" aria-labelledby="t-calc">
     <header>
       <h1 id="t-calc">Calcolatore gift card</h1>
-      <p class="sub">Card da 40 € · 524 punti l'una · <span class="versione">versione 7</span></p>
+      <p class="sub">Card da 40 € · 524 punti l'una · <span class="versione">versione 8</span></p>
     </header>
 
     <div class="panel">
@@ -228,6 +241,21 @@ nav.tabbar svg { width: 22px; height: 22px; }
       <h1 id="t-inv">Inventario gift card</h1>
       <div class="totals" id="totali"></div>
     </header>
+
+    <div class="panel assegna">
+      <h2>Assegna gift card a un acquirente</h2>
+      <div class="assegna-riga">
+        <label class="field" for="ass-nome">Nome acquirente
+          <input id="ass-nome" list="ass-nomi" autocomplete="off" placeholder="es. Mario">
+        </label>
+        <datalist id="ass-nomi"></datalist>
+        <label class="field qta" for="ass-qta">Quante
+          <input id="ass-qta" type="number" inputmode="numeric" min="1" step="1" value="1">
+        </label>
+        <button class="primary" id="ass-ok" type="button">Assegna</button>
+      </div>
+      <p class="note" id="ass-nota"></p>
+    </div>
 
     <div class="row">
       <button class="primary" id="btn-nuova" type="button">+ Aggiungi gift card</button>
@@ -299,6 +327,8 @@ nav.tabbar svg { width: 22px; height: 22px; }
   const ICONA_OCCHIO = SVG('<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>');
   const ICONA_OCCHIO_CHIUSO = SVG('<path d="M3 3l18 18"/><path d="M10.6 5.1A10.7 10.7 0 0 1 12 5c6.4 0 10 7 10 7a17.6 17.6 0 0 1-3.2 4.2M6.6 6.6A17.4 17.4 0 0 0 2 12s3.6 7 10 7a10.4 10.4 0 0 0 5.4-1.5"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/>');
   const ICONA_COPIA = SVG('<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/>');
+  const ICONA_USATA = SVG('<path d="M3 8.5V6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2.5a2.5 2.5 0 0 0 0 5V16a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2.5a2.5 2.5 0 0 0 0-5z"/><path d="M9 11.5l2 2 4-4"/>');
+  const ICONA_X = SVG('<path d="M6 6l12 12M18 6L6 18"/>');
   const ICONA_OK = SVG('<path d="M5 12.5l4.5 4.5L19 7.5"/>');
   const PREZZI = [30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40];
   const $ = (id) => document.getElementById(id);
@@ -509,6 +539,7 @@ nav.tabbar svg { width: 22px; height: 22px; }
     else debounce.set(c.id, setTimeout(() => scriviCard(c), 600));
     totali();
     aggiornaWa();
+    aggiornaAssegna();
   }
 
   function rigaCard(c) {
@@ -521,9 +552,15 @@ nav.tabbar svg { width: 22px; height: 22px; }
         <button class="icon-btn occhio" type="button"></button>
         <button class="icon-btn copia" type="button" aria-label="Copia codice" title="Copia codice">${ICONA_COPIA}</button>
       </div>
-      <div class="stati" role="group" aria-label="Stato"></div>
+      <div class="stato-riga">
+        <div class="stati" role="group" aria-label="Stato"></div>
+        <button class="icon-btn usata" type="button" aria-label="Segna come usata" title="Usata">${ICONA_USATA}</button>
+      </div>
       <div class="card-bottom">
-        <input class="acq" placeholder="Acquirente" autocomplete="off" aria-label="Acquirente">
+        <div class="acq-wrap">
+          <input class="acq" placeholder="Acquirente" autocomplete="off" aria-label="Acquirente">
+          <button class="acq-x" type="button" aria-label="Cancella acquirente" title="Cancella acquirente">${ICONA_X}</button>
+        </div>
         <button class="del" type="button">Elimina</button>
       </div>`;
     const sel = el.querySelector(".taglio");
@@ -564,18 +601,26 @@ nav.tabbar svg { width: 22px; height: 22px; }
     };
     const acq = el.querySelector(".acq");
     acq.id = "acq-" + c.id; acq.value = c.acquirente || "";
-    acq.oninput = () => { modifica(c, "acquirente", acq.value.trim()); renderAcquirenti(); };
+    const acqX = el.querySelector(".acq-x");
+    acqX.hidden = !acq.value;
+    acq.oninput = () => { modifica(c, "acquirente", acq.value.trim()); acqX.hidden = !acq.value; renderAcquirenti(); };
+    acqX.onclick = () => { acq.value = ""; acqX.hidden = true; modifica(c, "acquirente", "", true); renderAcquirenti(); };
     const stati = el.querySelector(".stati");
-    for (const s of STATI) {
+    const usata = el.querySelector(".usata");
+    const impostaStato = (s) => {
+      modifica(c, "stato", s, true); el.dataset.stato = s;
+      stati.querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", x.dataset.v === s));
+      usata.setAttribute("aria-pressed", s === "Usata");
+      usata.setAttribute("aria-label", s === "Usata" ? "Togli «usata» (torna disponibile)" : "Segna come usata");
+    };
+    for (const s of ["Disponibile", "Venduta"]) {
       const b = document.createElement("button"); b.type = "button"; b.dataset.v = s; b.textContent = s;
       b.setAttribute("aria-pressed", c.stato === s);
-      b.onclick = () => {
-        modifica(c, "stato", s, true); el.dataset.stato = s;
-        stati.querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", x.dataset.v === s));
-        if (s === "Venduta" && !acq.value) acq.focus();
-      };
+      b.onclick = () => { impostaStato(s); if (s === "Venduta" && !acq.value) acq.focus(); };
       stati.append(b);
     }
+    usata.setAttribute("aria-pressed", c.stato === "Usata");
+    usata.onclick = () => impostaStato(c.stato === "Usata" ? "Disponibile" : "Usata");
     const del = el.querySelector(".del");
     del.onclick = () => {
       if (del.classList.contains("armed")) { eliminaCard(c); return; }
@@ -683,7 +728,36 @@ nav.tabbar svg { width: 22px; height: 22px; }
     aggiornaWa();
   });
 
+  /* ---------- assegna N card libere a un acquirente ---------- */
+  const libere = () => card.filter((c) => c.stato === "Disponibile" && (c.codice || "").trim() && !chiaveAcq(c.acquirente));
+  function aggiornaAssegna() {
+    const n = libere().length;
+    $("ass-nota").textContent = n ? `Card libere da assegnare: ${n} (disponibili, con codice e senza acquirente).` : "Nessuna card libera: servono card disponibili con codice e senza acquirente.";
+    const nomi = new Map();
+    for (const c of card) { const k = chiaveAcq(c.acquirente); if (k && !nomi.has(k)) nomi.set(k, c.acquirente.trim()); }
+    const dl = $("ass-nomi"); dl.innerHTML = "";
+    for (const nome of nomi.values()) { const o = document.createElement("option"); o.value = nome; dl.append(o); }
+  }
+  $("ass-ok").onclick = () => {
+    const nome = $("ass-nome").value.trim();
+    const qta = Math.floor(Number($("ass-qta").value));
+    if (!nome) { $("ass-nota").textContent = "Scrivi il nome dell'acquirente."; $("ass-nome").focus(); return; }
+    if (!(qta >= 1)) { $("ass-nota").textContent = "Scrivi quante card assegnare (almeno 1)."; $("ass-qta").focus(); return; }
+    const scelte = libere().slice(0, qta);
+    if (!scelte.length) { aggiornaAssegna(); return; }
+    // usa la stessa grafia del nome se l'acquirente esiste già
+    const esistente = card.find((c) => chiaveAcq(c.acquirente) === chiaveAcq(nome));
+    const nomeFinale = esistente ? esistente.acquirente.trim() : nome;
+    for (const c of scelte) modifica(c, "acquirente", nomeFinale, true);
+    filtroAcq = chiaveAcq(nomeFinale);
+    filtro = "Tutte"; document.querySelectorAll("#chips-stato .chip").forEach((x) => x.setAttribute("aria-pressed", x.dataset.f === "Tutte"));
+    $("ass-nome").value = ""; $("ass-qta").value = "1";
+    render();
+    avviso(scelte.length < qta ? `Assegnate solo ${scelte.length} card a ${nomeFinale}: non ce n'erano altre libere.` : `Assegnate ${scelte.length} card a ${nomeFinale}.`);
+  };
+
   function renderAcquirenti() {
+    aggiornaAssegna();
     const box = $("chips-acq");
     const acq = new Map();
     for (const c of card) {
